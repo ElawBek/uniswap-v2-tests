@@ -1,9 +1,11 @@
-import { expect } from 'chai'
+import { expect, use } from 'chai'
 import { ethers } from 'hardhat'
 
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { constants, BigNumber } from 'ethers'
 import { parseEther } from 'ethers/lib/utils'
+
+import { signERC2612Permit } from 'eth-permit'
 
 const timestamp = ethers.BigNumber.from(1852640309)
 
@@ -310,6 +312,79 @@ describe('APP', () => {
 			expect(_reserve1).to.be.eq(parseEther('500'))
 			// 2 - 1
 			expect(_reserve0).to.be.eq(parseEther('1'))
+		})
+
+		it('Remove tokens liquidity with permit', async () => {
+			const result = await signERC2612Permit(
+				userTwo,
+				PairERCtoERC.address,
+				userTwo.address,
+				Router.address,
+				'86000000000000000000'
+			)
+
+			// To calculate the output tokens:
+			// liquidity * balance / totalSupplyLP
+			// For TokenOne: 86 * 1e18 * 55 * 1e18 / 110 * 1e18 = 43 TKN1
+			// For TokenTwo: 86 * 1e18 * 220 * 1e18 / 110 * 1e18 = 172 TKN2
+			await expect(() =>
+				Router.connect(userTwo).removeLiquidityWithPermit(
+					TokenOne.address,
+					TokenTwo.address,
+					parseEther('86'),
+					constants.Zero,
+					constants.Zero,
+					userTwo.address,
+					result.deadline,
+					false,
+					result.v,
+					result.r,
+					result.s
+				)
+			).to.changeTokenBalance(PairERCtoERC.connect(userTwo), userTwo, parseEther('-86'))
+
+			const { _reserve0, _reserve1 } = await PairERCtoERC.connect(userTwo).getReserves()
+
+			// 55 - 43
+			expect(_reserve0).to.be.eq(parseEther('12'))
+			// 220 - 172
+			expect(_reserve1).to.be.eq(parseEther('48'))
+		})
+
+		it('Remove ETH and tokenOne liquidity with permit', async () => {
+			const result = await signERC2612Permit(
+				userOne,
+				PairERCtoWETH.address,
+				userOne.address,
+				Router.address,
+				'12000000000000000000'
+			)
+
+			// To calculate the output tokens:
+			// liquidity * balance / totalSupplyLP
+			// For TokenOne: 12 * 1e18 * 1000 * 1e18 / 44721359549995793928 = 268.328157299974763570 TKN1
+			// For TokenTwo: 12 * 1e18 * 2 * 1e18 / 44721359549995793928 = 0.536656314599949527 ETH
+			await expect(() =>
+				Router.connect(userOne).removeLiquidityETHWithPermit(
+					TokenOne.address,
+					parseEther('12'),
+					constants.Zero,
+					constants.Zero,
+					userOne.address,
+					result.deadline,
+					false,
+					result.v,
+					result.r,
+					result.s
+				)
+			).to.changeTokenBalance(PairERCtoWETH.connect(userOne), userOne, parseEther('-12'))
+
+			const { _reserve0, _reserve1 } = await PairERCtoWETH.connect(userOne).getReserves()
+
+			// 1000 - 268.328157299974763570 = 731.671842700025236430
+			expect(_reserve1).to.be.eq(BigNumber.from('731671842700025236430'))
+			// 2 - 0.536656314599949527 = 1463343685400050473
+			expect(_reserve0).to.be.eq(BigNumber.from('1463343685400050473'))
 		})
 	})
 
