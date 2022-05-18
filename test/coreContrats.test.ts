@@ -98,7 +98,7 @@ describe('APP', () => {
 			const createdPairERCtoERC = await Factory.getPair(TokenTwo.address, TokenOne.address)
 			const createdPairERCtoWETH = await Factory.getPair(WETH.address, TokenThree.address)
 
-			// Make the pair's contract callable
+			// Make the pair's contracts callable
 			PairERCtoERC = new UniswapV2Pair__factory().attach(createdPairERCtoERC)
 			PairERCtoWETH = new UniswapV2Pair__factory().attach(createdPairERCtoWETH)
 
@@ -122,10 +122,6 @@ describe('APP', () => {
 		})
 
 		it('Checking variables', async () => {
-			const createdPairERCtoERC = await Factory.getPair(TokenTwo.address, TokenOne.address)
-
-			expect(createdPairERCtoERC).to.eq(PairERCtoERC.address)
-
 			expect(await PairERCtoERC.connect(owner).factory()).to.eq(Factory.address)
 			expect(await PairERCtoERC.connect(owner).token0()).to.eq(TokenOne.address)
 			expect(await PairERCtoERC.connect(owner).token1()).to.eq(TokenTwo.address)
