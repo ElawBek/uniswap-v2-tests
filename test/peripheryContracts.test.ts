@@ -59,9 +59,9 @@ describe('APP', () => {
 		expect(await Router.WETH()).to.be.eq(WETH.address)
 	})
 
-	describe('Add liquidity', () => {
+	xdescribe('Add liquidity', () => {
 		beforeEach(async () => {
-			await TokenOne.mint(userOne.address, parseEther('1000'))
+			await TokenOne.mint(userOne.address, parseEther('1500'))
 			await TokenTwo.mint(userOne.address, parseEther('1000'))
 
 			await TokenOne.connect(userOne).approve(Router.address, constants.MaxUint256)
@@ -108,45 +108,64 @@ describe('APP', () => {
 		})
 
 		it('Add liquidity to the existing pair', async () => {
-			expect(
-				await Router.connect(userOne).addLiquidity(
-					TokenOne.address,
-					TokenTwo.address,
-					parseEther('5'),
-					parseEther('20'),
-					parseEther('1'),
-					parseEther('1'),
-					userOne.address,
-					timestamp
-				)
+			await Router.connect(userOne).addLiquidity(
+				TokenOne.address,
+				TokenTwo.address,
+				parseEther('5'),
+				parseEther('20'),
+				parseEther('1'),
+				parseEther('1'),
+				userOne.address,
+				timestamp
 			)
 
 			// Make the pair's contract callable
 			const createdPair = await Factory.getPair(TokenOne.address, TokenTwo.address)
 			PairERCtoERC = new UniswapV2Pair__factory().attach(createdPair)
 
-			// sqrt(200 * 1e18 * 50 * 1e18) = 100 * 1e18
-			await expect(() =>
-				Router.connect(userTwo).addLiquidity(
-					TokenTwo.address,
-					TokenOne.address,
-					parseEther('200'),
-					parseEther('50'),
-					constants.Zero,
-					constants.Zero,
-					userTwo.address,
-					timestamp
-				)
+			await expect(
+				() =>
+					Router.connect(userTwo).addLiquidity(
+						TokenTwo.address,
+						TokenOne.address,
+						parseEther('200'),
+						parseEther('50'),
+						constants.Zero,
+						constants.Zero,
+						userTwo.address,
+						timestamp
+					)
+				// sqrt(200 * 1e18 * 50 * 1e18) = 100 * 1e18
 			).to.changeTokenBalance(PairERCtoERC.connect(userTwo), userTwo, parseEther('100'))
 
 			// Check pair's reserves
 			const { _reserve0, _reserve1 } = await PairERCtoERC.connect(userOne).getReserves()
+			const totalSupplyLP = await PairERCtoERC.connect(userOne).totalSupply()
 
 			expect(_reserve0).to.be.eq(parseEther('220'))
 			expect(_reserve1).to.be.eq(parseEther('55'))
+			expect(totalSupplyLP).to.be.eq(parseEther('110'))
+
+			// Adding liquidity with an unequal coefficient
+			await expect(
+				() =>
+					Router.connect(userOne).addLiquidity(
+						TokenTwo.address,
+						TokenOne.address,
+						parseEther('60'),
+						parseEther('50'),
+						constants.Zero,
+						constants.Zero,
+						userOne.address,
+						timestamp
+					)
+				// The smallest of the formula is selected: amount * totalSupply / reserve
+				// 60 * 1e18 * 110 * 1e18 / 220 * 1e18 = 30000000000000000000 or 30 LP
+				// 50 * 1e18 * 110 * 1e18 / 55 * 1e18 = 100000000000000000000 or 100 LP
+			).to.changeTokenBalance(PairERCtoERC.connect(userOne), userOne, parseEther('30'))
 		})
 
-		it('addLiquidityWithEth', async () => {
+		it('Add liquidity with ETH', async () => {
 			await expect(
 				await Router.connect(userOne).addLiquidityETH(
 					TokenOne.address,
@@ -177,4 +196,124 @@ describe('APP', () => {
 			expect(_reserve1).to.be.eq(parseEther('2'))
 		})
 	})
+
+	describe('Remove liquidity', () => {
+		beforeEach(async () => {
+			await TokenOne.mint(userOne.address, parseEther('1500'))
+			await TokenTwo.mint(userOne.address, parseEther('1000'))
+
+			await TokenOne.connect(userOne).approve(Router.address, constants.MaxUint256)
+			await TokenTwo.connect(userOne).approve(Router.address, constants.MaxUint256)
+
+			await TokenOne.mint(userTwo.address, parseEther('50'))
+			await TokenTwo.mint(userTwo.address, parseEther('200'))
+
+			await TokenOne.connect(userTwo).approve(Router.address, constants.MaxUint256)
+			await TokenTwo.connect(userTwo).approve(Router.address, constants.MaxUint256)
+
+			await Router.connect(userOne).addLiquidity(
+				TokenOne.address,
+				TokenTwo.address,
+				parseEther('5'),
+				parseEther('20'),
+				parseEther('1'),
+				parseEther('1'),
+				userOne.address,
+				timestamp
+			)
+
+			await Router.connect(userTwo).addLiquidity(
+				TokenTwo.address,
+				TokenOne.address,
+				parseEther('200'),
+				parseEther('50'),
+				constants.Zero,
+				constants.Zero,
+				userTwo.address,
+				timestamp
+			)
+
+			await Router.connect(userOne).addLiquidityETH(
+				TokenOne.address,
+				parseEther('1000'),
+				constants.Zero,
+				constants.Zero,
+				userOne.address,
+				timestamp,
+				{ value: parseEther('2') }
+			)
+
+			// Make the pair's contracts callable
+			const createdPairTokens = await Factory.getPair(TokenOne.address, TokenTwo.address)
+			PairERCtoERC = new UniswapV2Pair__factory().attach(createdPairTokens)
+
+			const createdPairWithETH = await Factory.getPair(TokenOne.address, WETH.address)
+			PairERCtoWETH = new UniswapV2Pair__factory().attach(createdPairWithETH)
+		})
+
+		it('Remove tokens Liquidity', async () => {
+			await PairERCtoERC.connect(userOne).approve(Router.address, constants.MaxUint256)
+
+			// To calculate the output tokens:
+			// liquidity * balance / totalSupplyLP
+			// For TokenOne: 5 * 1e18 * 55 * 1e18 / 110 * 1e18 = 2.5 TKN1
+			// For TokenTwo: 5 * 1e18 * 220 * 1e18 / 110 * 1e18 = 10 TKN2
+			await expect(() =>
+				Router.connect(userOne).removeLiquidity(
+					TokenOne.address,
+					TokenTwo.address,
+					parseEther('5'),
+					parseEther('2.3'),
+					parseEther('9.5'),
+					userOne.address,
+					timestamp
+				)
+			)
+				.to.emit(PairERCtoERC.connect(userOne), 'Burn')
+				.to.changeTokenBalance(PairERCtoERC.connect(userOne), userOne, parseEther('-5'))
+
+			const { _reserve0, _reserve1 } = await PairERCtoERC.connect(userOne).getReserves()
+
+			// 210 - 10
+			expect(_reserve0).to.be.eq(parseEther('210'))
+			// 55 - 2.5
+			expect(_reserve1).to.be.eq(parseEther('52.5'))
+		})
+
+		it('Remove Liquidity with ETH', async () => {
+			await PairERCtoWETH.connect(userOne).approve(Router.address, constants.MaxUint256)
+
+			// To calculate the output tokens:
+			// liquidity * balance / totalSupplyLP
+			// For TokenOne: 22360679774997896964 * 1000 * 1e18 / 44721359549995793928 = 500 TKN1
+			// For TokenTwo: 22360679774997896964 * 2 * 1e18 / 44721359549995793928 = 1 ETH
+			await expect(() =>
+				Router.connect(userOne).removeLiquidityETH(
+					TokenOne.address,
+					BigNumber.from('22360679774997896964'),
+					parseEther('200'),
+					parseEther('0.6'),
+					userOne.address,
+					timestamp
+				)
+			)
+				.to.emit(PairERCtoWETH.connect(userOne), 'Sync')
+				.to.changeTokenBalance(
+					PairERCtoWETH.connect(userOne),
+					userOne,
+					BigNumber.from('-22360679774997896964')
+				)
+
+			const { _reserve0, _reserve1 } = await PairERCtoWETH.connect(userOne).getReserves()
+
+			// 1000 - 500
+			expect(_reserve1).to.be.eq(parseEther('500'))
+			// 2 - 1
+			expect(_reserve0).to.be.eq(parseEther('1'))
+		})
+	})
+
+	// TODO remove liquidity after swaps
+	// TODO add liquidity with token less 18 decimals
+	// TODO test with feeTo == true
 })

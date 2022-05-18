@@ -241,6 +241,58 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
 		TransferHelper.safeTransferETH(to, amountETH);
 	}
 
+	function removeLiquidityWithPermit(
+		address tokenA,
+		address tokenB,
+		uint256 liquidity,
+		uint256 amountAMin,
+		uint256 amountBMin,
+		address to,
+		uint256 deadline,
+		bool approveMax,
+		uint8 v,
+		bytes32 r,
+		bytes32 s
+	) external virtual override returns (uint256 amountA, uint256 amountB) {
+		address pair = UniswapV2Library.pairFor(factory, tokenA, tokenB);
+		uint256 value = approveMax ? uint256(-1) : liquidity;
+		IUniswapV2Pair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
+		(amountA, amountB) = removeLiquidity(
+			tokenA,
+			tokenB,
+			liquidity,
+			amountAMin,
+			amountBMin,
+			to,
+			deadline
+		);
+	}
+
+	function removeLiquidityETHWithPermit(
+		address token,
+		uint256 liquidity,
+		uint256 amountTokenMin,
+		uint256 amountETHMin,
+		address to,
+		uint256 deadline,
+		bool approveMax,
+		uint8 v,
+		bytes32 r,
+		bytes32 s
+	) external virtual override returns (uint256 amountToken, uint256 amountETH) {
+		address pair = UniswapV2Library.pairFor(factory, token, WETH);
+		uint256 value = approveMax ? uint256(-1) : liquidity;
+		IUniswapV2Pair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
+		(amountToken, amountETH) = removeLiquidityETH(
+			token,
+			liquidity,
+			amountTokenMin,
+			amountETHMin,
+			to,
+			deadline
+		);
+	}
+
 	// **** REMOVE LIQUIDITY (supporting fee-on-transfer tokens) ****
 	// This function can be used for tokens that have transfer or storage fees.
 	// When a token has such fees we cannot rely on the removeLiquidity function to tell us how much of the token we get back,
@@ -357,6 +409,24 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
 			amounts[0]
 		);
 
+		_swap(amounts, path, to);
+	}
+
+	function swapTokensForExactTokens(
+		uint256 amountOut,
+		uint256 amountInMax,
+		address[] calldata path,
+		address to,
+		uint256 deadline
+	) external virtual override ensure(deadline) returns (uint256[] memory amounts) {
+		amounts = UniswapV2Library.getAmountsIn(factory, amountOut, path);
+		require(amounts[0] <= amountInMax, 'UniswapV2Router: EXCESSIVE_INPUT_AMOUNT');
+		TransferHelper.safeTransferFrom(
+			path[0],
+			msg.sender,
+			UniswapV2Library.pairFor(factory, path[0], path[1]),
+			amounts[0]
+		);
 		_swap(amounts, path, to);
 	}
 
