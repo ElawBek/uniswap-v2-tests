@@ -468,6 +468,15 @@ describe('APP', () => {
 			// (40e18 * 997 * 220e18) / (55e18 * 1000 + 40e18 * 997) =
 			// 8,7736e+42 / 9,488e+22 =
 			// 92470489038785834738 or 92.470489038785834738 TKN2
+
+			const amounts = await Router.getAmountsOut(parseEther('40'), [
+				TokenOne.address,
+				TokenTwo.address,
+			])
+
+			expect(amounts[0]).to.be.eq(parseEther('40'))
+			expect(amounts[1]).to.be.eq(parseEther('92.470489038785834738'))
+
 			await expect(() =>
 				Router.connect(userOne).swapExactTokensForTokens(
 					parseEther('40'), // amountIn,
@@ -501,6 +510,15 @@ describe('APP', () => {
 			// ((220e18 * 21e18 * 1000) / (55e18 - 21e18) * 997)) + 1 =
 			// (4.62e+42 / 3.3898e+22) + 1 =
 			// 136291226621039589357 or 136.291226621039589357 TKN2
+
+			const amounts = await Router.getAmountsIn(parseEther('21'), [
+				TokenTwo.address,
+				TokenOne.address,
+			])
+
+			expect(amounts[0]).to.be.eq(parseEther('136.291226621039589357'))
+			expect(amounts[1]).to.be.eq(parseEther('21'))
+
 			await expect(() =>
 				Router.connect(userTwo).swapTokensForExactTokens(
 					parseEther('21'), // amountOut,
@@ -530,6 +548,15 @@ describe('APP', () => {
 			// (0.2e18 * 997 * 1000e18) / (2e18 * 1000 + 0.2e18 * 997) =
 			// 1.994e+41 / 2.1994e+21 =
 			// 90661089388014913158 or 90.661089388014913158 TKN1
+
+			const amounts = await Router.getAmountsOut(parseEther('0.2'), [
+				WETH.address,
+				TokenOne.address,
+			])
+
+			expect(amounts[0]).to.be.eq(parseEther('0.2'))
+			expect(amounts[1]).to.be.eq(parseEther('90.661089388014913158'))
+
 			await Router.connect(userOne).swapExactETHForTokens(
 				parseEther('85'), //  amountOutMin,
 				[WETH.address, TokenOne.address], //  path,
@@ -566,6 +593,17 @@ describe('APP', () => {
 			// 22261734541129371930 or 22.261734541129371930 TKN2
 
 			// amounts[] = [22.261734541129371930 TKN2, 5.040246367242430811 TKN1, 0.01 WETH]
+
+			const amounts = await Router.getAmountsIn(parseEther('0.01'), [
+				TokenTwo.address,
+				TokenOne.address,
+				WETH.address,
+			])
+
+			expect(amounts[0]).to.be.eq(parseEther('22.261734541129371930'))
+			expect(amounts[1]).to.be.eq(parseEther('5.040246367242430811'))
+			expect(amounts[2]).to.be.eq(parseEther('0.01'))
+
 			await expect(() =>
 				Router.connect(userTwo).swapTokensForExactETH(
 					parseEther('0.01'), // amountOut,
@@ -599,6 +637,17 @@ describe('APP', () => {
 			// 34745524652092692 or 0.034745524652092692 ETH
 
 			// amounts[] = [105 TKN2, 17.733110553305511495 TKN1, 0.034745524652092692 WETH]
+
+			const amounts = await Router.getAmountsOut(parseEther('105'), [
+				TokenTwo.address,
+				TokenOne.address,
+				WETH.address,
+			])
+
+			expect(amounts[0]).to.be.eq(parseEther('105'))
+			expect(amounts[1]).to.be.eq(parseEther('17.733110553305511495'))
+			expect(amounts[2]).to.be.eq(parseEther('0.034745524652092692'))
+
 			await expect(
 				await Router.connect(userOne).swapExactTokensForETH(
 					parseEther('105'), // amountIn,
@@ -615,6 +664,12 @@ describe('APP', () => {
 			// ((2e18 * 123e18 * 1000) / (1000e18 - 123e18) * 997)) + 1 =
 			// (2.46e+41 / 8.74369e+23) + 1 =
 			// 281345747619140203 or 0.281345747619140203 TKN2
+
+			const amounts = await Router.getAmountsIn(parseEther('123'), [WETH.address, TokenOne.address])
+
+			expect(amounts[0]).to.be.eq(parseEther('0.281345747619140203'))
+			expect(amounts[1]).to.be.eq(parseEther('123'))
+
 			await Router.connect(userTwo).swapETHForExactTokens(
 				parseEther('123'), // amountOut,
 				[WETH.address, TokenOne.address], // path,
