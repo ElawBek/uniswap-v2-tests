@@ -420,6 +420,7 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
 		uint256 deadline
 	) external virtual override ensure(deadline) returns (uint256[] memory amounts) {
 		amounts = UniswapV2Library.getAmountsIn(factory, amountOut, path);
+
 		require(amounts[0] <= amountInMax, 'UniswapV2Router: EXCESSIVE_INPUT_AMOUNT');
 		TransferHelper.safeTransferFrom(
 			path[0],
