@@ -61,7 +61,7 @@ describe('APP', () => {
 		expect(await Router.WETH()).to.be.eq(WETH.address)
 	})
 
-	xdescribe('Add liquidity', () => {
+	describe('Add liquidity', () => {
 		beforeEach(async () => {
 			await TokenOne.mint(userOne.address, parseEther('1500'))
 			await TokenTwo.mint(userOne.address, parseEther('1000'))
@@ -96,7 +96,7 @@ describe('APP', () => {
 			PairERCtoERC = new UniswapV2Pair__factory().attach(createdPair)
 
 			// Check LP-Balance for UserOne
-			// sqrt(5 * 1e18 * 20 * 1e18) - 1000 =
+			// sqrt(5e18 * 20e18) - 1000 =
 			// 9999999999999999000 or 9.999999999999999000 LP-tokens
 			// 1000 - MINIMUM_LIQUIDITY
 			expect(await PairERCtoERC.connect(userOne).balanceOf(userOne.address)).to.be.eq(
@@ -104,10 +104,11 @@ describe('APP', () => {
 			)
 
 			// Check pair's reserves
-			const { _reserve0, _reserve1 } = await PairERCtoERC.connect(userOne).getReserves()
+			const reserveTKN1 = await TokenOne.balanceOf(PairERCtoERC.address)
+			const reserveTKN2 = await TokenTwo.balanceOf(PairERCtoERC.address)
 
-			expect(_reserve0).to.be.eq(parseEther('20'))
-			expect(_reserve1).to.be.eq(parseEther('5'))
+			expect(reserveTKN2).to.be.eq(parseEther('20'))
+			expect(reserveTKN1).to.be.eq(parseEther('5'))
 		})
 
 		it('Add liquidity to the existing pair', async () => {
@@ -140,16 +141,15 @@ describe('APP', () => {
 						userTwo.address, // to
 						timestamp // deadline
 					)
-				// sqrt(200 * 1e18 * 50 * 1e18) = 100 * 1e18
+				// sqrt(200e18 * 50e18) = 100e18
 			).to.changeTokenBalance(PairERCtoERC.connect(userTwo), userTwo, parseEther('100'))
 
 			// Check pair's reserves
-			const { _reserve0, _reserve1 } = await PairERCtoERC.connect(userOne).getReserves()
-			const totalSupplyLP = await PairERCtoERC.connect(userOne).totalSupply()
+			const reserveTKN1 = await TokenOne.balanceOf(PairERCtoERC.address)
+			const reserveTKN2 = await TokenTwo.balanceOf(PairERCtoERC.address)
 
-			expect(_reserve0).to.be.eq(parseEther('220'))
-			expect(_reserve1).to.be.eq(parseEther('55'))
-			expect(totalSupplyLP).to.be.eq(parseEther('110'))
+			expect(reserveTKN2).to.be.eq(parseEther('220'))
+			expect(reserveTKN1).to.be.eq(parseEther('55'))
 
 			// Adding liquidity with an unequal coefficient
 			await expect(
@@ -165,8 +165,8 @@ describe('APP', () => {
 						timestamp // deadline
 					)
 				// The smallest of the formula is selected: amount * totalSupply / reserve
-				// 60 * 1e18 * 110 * 1e18 / 220 * 1e18 = 30000000000000000000 or 30 LP
-				// 50 * 1e18 * 110 * 1e18 / 55 * 1e18 = 100000000000000000000 or 100 LP
+				// 60e18 * 110e18 / 220e18 = 30000000000000000000 or 30.000000000000000000 LP
+				// 50e18 * 110e18 / 55e18 = 100000000000000000000 or 100.000000000000000000 LP
 			).to.changeTokenBalance(PairERCtoERC.connect(userOne), userOne, parseEther('30'))
 		})
 
@@ -188,7 +188,7 @@ describe('APP', () => {
 			const createdPair = await Factory.getPair(TokenOne.address, WETH.address)
 			PairERCtoWETH = new UniswapV2Pair__factory().attach(createdPair)
 
-			// sqrt(1000 * 1e18 * 2 * 1e18) - 1000 =
+			// sqrt(1000e18 * 2e18) - 1000 =
 			// 44721359549995792928 or 44.721359549995792928 LP-tokens
 			// 1000 - MINIMUM_LIQUIDITY
 			expect(await PairERCtoWETH.connect(userOne).balanceOf(userOne.address)).to.be.eq(
@@ -196,14 +196,15 @@ describe('APP', () => {
 			)
 
 			// Check pair's reserves
-			const { _reserve0, _reserve1 } = await PairERCtoWETH.connect(userOne).getReserves()
+			const reserveWETH = await WETH.balanceOf(PairERCtoWETH.address)
+			const reserveTKN1 = await TokenOne.balanceOf(PairERCtoWETH.address)
 
-			expect(_reserve0).to.be.eq(parseEther('1000'))
-			expect(_reserve1).to.be.eq(parseEther('2'))
+			expect(reserveTKN1).to.be.eq(parseEther('1000'))
+			expect(reserveWETH).to.be.eq(parseEther('2'))
 		})
 	})
 
-	xdescribe('Remove liquidity', () => {
+	describe('Remove liquidity', () => {
 		beforeEach(async () => {
 			await TokenOne.mint(userOne.address, parseEther('1500'))
 			await TokenTwo.mint(userOne.address, parseEther('1000'))
@@ -265,8 +266,8 @@ describe('APP', () => {
 
 			// To calculate the output tokens:
 			// liquidity * balance / totalSupplyLP
-			// For TokenOne: 5 * 1e18 * 55 * 1e18 / 110 * 1e18 = 2.5 TKN1
-			// For TokenTwo: 5 * 1e18 * 220 * 1e18 / 110 * 1e18 = 10 TKN2
+			// For TokenOne: 5e18 * 55e18 / 110e18 = 2.5 TKN1
+			// For TokenTwo: 5e18 * 220e18 / 110e18 = 10 TKN2
 			await expect(() =>
 				Router.connect(userOne).removeLiquidity(
 					TokenOne.address, // tokenA,
@@ -281,21 +282,23 @@ describe('APP', () => {
 				.to.emit(PairERCtoERC.connect(userOne), 'Burn')
 				.to.changeTokenBalance(PairERCtoERC.connect(userOne), userOne, parseEther('-5'))
 
-			const { _reserve0, _reserve1 } = await PairERCtoERC.connect(userOne).getReserves()
+			// Check pair's reserves
+			const reserveTKN1 = await TokenOne.balanceOf(PairERCtoERC.address)
+			const reserveTKN2 = await TokenTwo.balanceOf(PairERCtoERC.address)
 
 			// 210 - 10
-			expect(_reserve0).to.be.eq(parseEther('210'))
+			expect(reserveTKN2).to.be.eq(parseEther('210'))
 			// 55 - 2.5
-			expect(_reserve1).to.be.eq(parseEther('52.5'))
+			expect(reserveTKN1).to.be.eq(parseEther('52.5'))
 		})
 
-		it('Remove Liquidity with ETH', async () => {
+		it('Remove liquidity with ETH', async () => {
 			await PairERCtoWETH.connect(userOne).approve(Router.address, constants.MaxUint256)
 
 			// To calculate the output tokens:
 			// liquidity * balance / totalSupplyLP
-			// For TokenOne: 22360679774997896964 * 1000 * 1e18 / 44721359549995793928 = 500 TKN1
-			// For TokenTwo: 22360679774997896964 * 2 * 1e18 / 44721359549995793928 = 1 ETH
+			// For TokenOne: 22360679774997896964 * 1000e18 / 44721359549995793928 = 500 TKN1
+			// For TokenTwo: 22360679774997896964 * 2e18 / 44721359549995793928 = 1 ETH
 			await expect(() =>
 				Router.connect(userOne).removeLiquidityETH(
 					TokenOne.address, // token,
@@ -313,12 +316,14 @@ describe('APP', () => {
 					parseEther('-22.360679774997896964')
 				)
 
-			const { _reserve0, _reserve1 } = await PairERCtoWETH.connect(userOne).getReserves()
+			// Check pair's reserves
+			const reserveWETH = await WETH.balanceOf(PairERCtoWETH.address)
+			const reserveTKN1 = await TokenOne.balanceOf(PairERCtoWETH.address)
 
 			// 1000 - 500
-			expect(_reserve1).to.be.eq(parseEther('500'))
+			expect(reserveTKN1).to.be.eq(parseEther('500'))
 			// 2 - 1
-			expect(_reserve0).to.be.eq(parseEther('1'))
+			expect(reserveWETH).to.be.eq(parseEther('1'))
 		})
 
 		it('Remove tokens liquidity with permit', async () => {
@@ -332,8 +337,8 @@ describe('APP', () => {
 
 			// To calculate the output tokens:
 			// liquidity * balance / totalSupplyLP
-			// For TokenOne: 86 * 1e18 * 55 * 1e18 / 110 * 1e18 = 43 TKN1
-			// For TokenTwo: 86 * 1e18 * 220 * 1e18 / 110 * 1e18 = 172 TKN2
+			// For TokenOne: 86e18 * 55e18 / 110e18 = 43 TKN1
+			// For TokenTwo: 86e18 * 220e18 / 110e18 = 172 TKN2
 			await expect(() =>
 				Router.connect(userTwo).removeLiquidityWithPermit(
 					TokenOne.address, // tokenA,
@@ -350,12 +355,14 @@ describe('APP', () => {
 				)
 			).to.changeTokenBalance(PairERCtoERC.connect(userTwo), userTwo, parseEther('-86'))
 
-			const { _reserve0, _reserve1 } = await PairERCtoERC.connect(userTwo).getReserves()
+			// Check pair's reserves
+			const reserveTKN1 = await TokenOne.balanceOf(PairERCtoERC.address)
+			const reserveTKN2 = await TokenTwo.balanceOf(PairERCtoERC.address)
 
 			// 55 - 43
-			expect(_reserve0).to.be.eq(parseEther('12'))
+			expect(reserveTKN1).to.be.eq(parseEther('12'))
 			// 220 - 172
-			expect(_reserve1).to.be.eq(parseEther('48'))
+			expect(reserveTKN2).to.be.eq(parseEther('48'))
 		})
 
 		it('Remove ETH and tokenOne liquidity with permit', async () => {
@@ -369,8 +376,8 @@ describe('APP', () => {
 
 			// To calculate the output tokens:
 			// liquidity * balance / totalSupplyLP
-			// For TokenOne: 12 * 1e18 * 1000 * 1e18 / 44721359549995793928 = 268.328157299974763570 TKN1
-			// For TokenTwo: 12 * 1e18 * 2 * 1e18 / 44721359549995793928 = 0.536656314599949527 ETH
+			// For TokenOne: 12e18 * 1000e18 / 44721359549995793928 = 268.328157299974763570 TKN1
+			// For TokenTwo: 12e18 * 2e18 / 44721359549995793928 = 0.536656314599949527 ETH
 			await expect(() =>
 				Router.connect(userOne).removeLiquidityETHWithPermit(
 					TokenOne.address, // token,
@@ -386,12 +393,14 @@ describe('APP', () => {
 				)
 			).to.changeTokenBalance(PairERCtoWETH.connect(userOne), userOne, parseEther('-12'))
 
-			const { _reserve0, _reserve1 } = await PairERCtoWETH.connect(userOne).getReserves()
+			// Check pair's reserves
+			const reserveWETH = await WETH.balanceOf(PairERCtoWETH.address)
+			const reserveTKN1 = await TokenOne.balanceOf(PairERCtoWETH.address)
 
 			// 1000 - 268.328157299974763570 = 731.671842700025236430
-			expect(_reserve1).to.be.eq(parseEther('731.671842700025236430'))
+			expect(reserveTKN1).to.be.eq(parseEther('731.671842700025236430'))
 			// 2 - 0.536656314599949527 = 1463343685400050473
-			expect(_reserve0).to.be.eq(parseEther('1.463343685400050473'))
+			expect(reserveWETH).to.be.eq(parseEther('1.463343685400050473'))
 		})
 	})
 
@@ -405,11 +414,9 @@ describe('APP', () => {
 
 			await TokenOne.mint(userTwo.address, parseEther('2000'))
 			await TokenTwo.mint(userTwo.address, parseEther('2000'))
-			await TokenThree.mint(userTwo.address, parseEther('2000'))
 
 			await TokenOne.connect(userTwo).approve(Router.address, constants.MaxUint256)
 			await TokenTwo.connect(userTwo).approve(Router.address, constants.MaxUint256)
-			await TokenThree.connect(userTwo).approve(Router.address, constants.MaxUint256)
 
 			// create TokenOne - TokenTwo pair
 			await Router.connect(userOne).addLiquidity(
@@ -446,35 +453,20 @@ describe('APP', () => {
 				{ value: parseEther('2') }
 			)
 
-			// create TokenOne - TokenThree pair
-			await Router.connect(userTwo).addLiquidity(
-				TokenOne.address, // tokenA,
-				TokenThree.address, // tokenB,
-				parseEther('400'), // amountADesired,
-				parseEther('200'), // amountBDesired,
-				constants.Zero, // amountAMin,
-				constants.Zero, // amountBMin,
-				userTwo.address, // to,
-				timestamp // deadline
-			)
-
 			// Make the pair's contracts callable
 			const createdPairTokens = await Factory.getPair(TokenOne.address, TokenTwo.address)
 			PairERCtoERC = new UniswapV2Pair__factory().attach(createdPairTokens)
 
 			const createdPairWithETH = await Factory.getPair(TokenOne.address, WETH.address)
 			PairERCtoWETH = new UniswapV2Pair__factory().attach(createdPairWithETH)
-
-			// const createdPairWithERC2 = await Factory.getPair(TokenOne.address, TokenThree.address)
-			// PairERCtoWETH = new UniswapV2Pair__factory().attach(createdPairWithERC2)
 		})
 
-		it('swap exact TKN1 For TKN2', async () => {
+		it('Swap exact TKN1 For TKN2', async () => {
 			// userOne already gave approve TokenOne --> Router
 
 			// (amountIn * 997 * reserveOut) / (reserveIn * 1000 + amountIn * 997)
-			// (40 * 1e18 * 997 * 220 * 1e18) / (55 * 1e18 * 1000 + 40 * 1e18 * 997) =
-			// 8.7736e+42 / 94880000000000000000000 =
+			// (40e18 * 997 * 220e18) / (55e18 * 1000 + 40e18 * 997) =
+			// 8,7736e+42 / 9,488e+22 =
 			// 92470489038785834738 or 92.470489038785834738 TKN2
 			await expect(() =>
 				Router.connect(userOne).swapExactTokensForTokens(
@@ -493,20 +485,21 @@ describe('APP', () => {
 				)
 
 			// Check pair's reserves
-			const { _reserve0, _reserve1 } = await PairERCtoERC.connect(userOne).getReserves()
+			const reserveTKN1 = await TokenOne.balanceOf(PairERCtoERC.address)
+			const reserveTKN2 = await TokenTwo.balanceOf(PairERCtoERC.address)
 
 			// 220 - 92.470489038785834738
-			expect(_reserve0).to.be.eq(parseEther('127.529510961214165262'))
+			expect(reserveTKN2).to.be.eq(parseEther('127.529510961214165262'))
 			// 55 + 40
-			expect(_reserve1).to.be.eq(parseEther('95'))
+			expect(reserveTKN1).to.be.eq(parseEther('95'))
 		})
 
-		it('swap TKN2 for exact TKN1', async () => {
+		it('Swap TKN2 for exact TKN1', async () => {
 			// userTwo already gave approve TokenTwo --> Router
 
 			// ((reserveIn * amountOut * 1000) / (reserveOut - amountOut) * 997)) + 1
-			// ((220 * 1e18 * 21 * 1e18 * 1000) / (55 * 1e18 - 21 * 1e18) * 997)) + 1 =
-			// (4.62e+42 / 33898000000000000000000) + 1 =
+			// ((220e18 * 21e18 * 1000) / (55e18 - 21e18) * 997)) + 1 =
+			// (4.62e+42 / 3.3898e+22) + 1 =
 			// 136291226621039589357 or 136.291226621039589357 TKN2
 			await expect(() =>
 				Router.connect(userTwo).swapTokensForExactTokens(
@@ -523,17 +516,126 @@ describe('APP', () => {
 			)
 
 			// Check pair's reserves
-			const { _reserve0, _reserve1 } = await PairERCtoERC.connect(userTwo).getReserves()
+			const reserveTKN1 = await TokenOne.balanceOf(PairERCtoERC.address)
+			const reserveTKN2 = await TokenTwo.balanceOf(PairERCtoERC.address)
 
 			// 220 + 136.291226621039589357
-			expect(_reserve0).to.be.eq(parseEther('356.291226621039589357'))
+			expect(reserveTKN2).to.be.eq(parseEther('356.291226621039589357'))
 			// 55 + 31
-			expect(_reserve1).to.be.eq(parseEther('34'))
+			expect(reserveTKN1).to.be.eq(parseEther('34'))
+		})
+
+		it('Swap exact ETH for TKN1', async () => {
+			// (amountIn * 997 * reserveOut) / (reserveIn * 1000 + amountIn * 997)
+			// (0.2e18 * 997 * 1000e18) / (2e18 * 1000 + 0.2e18 * 997) =
+			// 1.994e+41 / 2.1994e+21 =
+			// 90661089388014913158 or 90.661089388014913158 TKN1
+			await Router.connect(userOne).swapExactETHForTokens(
+				parseEther('85'), //  amountOutMin,
+				[WETH.address, TokenOne.address], //  path,
+				userOne.address, //  to,
+				timestamp, //  deadline,
+				{ value: parseEther('0.2') }
+			)
+
+			// Check pair's reserves
+			const reserveWETH = await WETH.balanceOf(PairERCtoWETH.address)
+			const reserveTKN1 = await TokenOne.balanceOf(PairERCtoWETH.address)
+
+			// 1000 - 90.661089388014913158
+			expect(reserveTKN1).to.be.eq(parseEther('909.338910611985086842'))
+			// 2 - 0.2
+			expect(reserveWETH).to.be.eq(parseEther('2.2'))
+		})
+
+		it('Swap TKN2 for exact ETH', async () => {
+			// userTwo already gave approve TokenTwo --> Router
+
+			// path = [TokenTwo.address, TokenOne.address, WETH.address]
+
+			// ETH <-- TKN1
+			// ((reserveIn * amountOut * 1000) / (reserveOut - amountOut) * 997)) + 1
+			// ((1000e18 * 0.01e18 * 1000) / (2e18 - 0.01e18) * 997)) + 1 =
+			// (1.e+40 / 1.98403e+21) + 1 =
+			// 5040246367242430811 or 5.040246367242430811 TKN1
+
+			// TKN1 <-- TKN2
+			// ((reserveIn * amountOut * 1000) / (reserveOut - amountOut) * 997)) + 1
+			// ((220e18 * 5040246367242430811 * 1000) / (55e18 - 5040246367242430811) * 997)) + 1 =
+			// (1,10885420079333477842e+42 / 49809874371859296481433) + 1 =
+			// 22261734541129371930 or 22.261734541129371930 TKN2
+
+			// amounts[] = [22.261734541129371930 TKN2, 5.040246367242430811 TKN1, 0.01 WETH]
+			await expect(() =>
+				Router.connect(userTwo).swapTokensForExactETH(
+					parseEther('0.01'), // amountOut,
+					parseEther('30'), // amountInMax,
+					[TokenTwo.address, TokenOne.address, WETH.address], // path,
+					userTwo.address, // to,
+					timestamp // deadline
+				)
+			).to.changeTokenBalance(
+				TokenTwo,
+				PairERCtoERC.connect(userTwo),
+				parseEther('22.261734541129371930')
+			)
+		})
+
+		it('Swap exact TKN2 for ETH', async () => {
+			// userOne already gave approve TokenTwo --> Router
+
+			// path = [TokenTwo.address, TokenOne.address, WETH.address]
+
+			// TKN2 --> TKN1
+			// (amountIn * 997 * reserveOut) / (reserveIn * 1000 + amountIn * 997)
+			// (105e18 * 997 * 55e18) / (220e18 * 1000 + 105e18 * 997) =
+			// 5.757675e+42 / 3.24685e+23 =
+			// 17733110553305511495 or 17.733110553305511495 TKN1
+
+			// TKN1 --> ETH
+			// (amountIn * 997 * reserveOut) / (reserveIn * 1000 + amountIn * 997)
+			// (17733110553305511495 * 997 * 2e18) / (1000e18 * 1000 + 17733110553305511495 * 997) =
+			// 3.535982244329118992103e+40 / 1017679911221645594960515 =
+			// 34745524652092692 or 0.034745524652092692 ETH
+
+			// amounts[] = [105 TKN2, 17.733110553305511495 TKN1, 0.034745524652092692 WETH]
+			await expect(
+				await Router.connect(userOne).swapExactTokensForETH(
+					parseEther('105'), // amountIn,
+					parseEther('0.03'), // amountOutMin,
+					[TokenTwo.address, TokenOne.address, WETH.address], // path,
+					userOne.address, // to,
+					timestamp // deadline
+				)
+			).to.changeEtherBalance(userOne, parseEther('0.034745524652092692'))
+		})
+
+		it('Swap ETH for exact TKN1', async () => {
+			// ((reserveIn * amountOut * 1000) / (reserveOut - amountOut) * 997)) + 1
+			// ((2e18 * 123e18 * 1000) / (1000e18 - 123e18) * 997)) + 1 =
+			// (2.46e+41 / 8.74369e+23) + 1 =
+			// 281345747619140203 or 0.281345747619140203 TKN2
+			await Router.connect(userTwo).swapETHForExactTokens(
+				parseEther('123'), // amountOut,
+				[WETH.address, TokenOne.address], // path,
+				userTwo.address, // to,
+				timestamp, // deadline
+				{ value: parseEther('0.4') }
+			)
+
+			// Check pair's reserves
+			const reserveWETH = await WETH.balanceOf(PairERCtoWETH.address)
+			const reserveTKN1 = await TokenOne.balanceOf(PairERCtoWETH.address)
+
+			// 1000 - 123
+			expect(reserveTKN1).to.be.eq(parseEther('877'))
+			// 2 + 0.281345747619140203
+			expect(reserveWETH).to.be.eq(parseEther('2.281345747619140203'))
 		})
 	})
 
 	// TODO remove liquidity after swap
-	// TODO test remove liquidity with supporting Fee TransferTokens
+	// TODO test remove and swap liquidity with supporting Fee TransferTokens
 	// TODO add liquidity with token less 18 decimals
 	// TODO test with feeTo == true
 })
