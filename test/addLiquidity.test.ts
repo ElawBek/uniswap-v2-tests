@@ -121,8 +121,8 @@ describe('APP', () => {
 				TokenTwo.address, // tokenB
 				parseEther('5'), // amountADesired
 				parseEther('20'), // amountBDesired
-				parseEther('1'), // amountAMin
-				parseEther('1'), // amountBMin
+				constants.Zero, // amountAMin
+				constants.Zero, // amountBMin
 				userOne.address, // to
 				timestamp // deadline
 			)
@@ -219,8 +219,8 @@ describe('APP', () => {
 					tokenWithFee.address, // tokenB
 					parseEther('20'), // amountADesired
 					parseEther('100'), // amountBDesired
-					parseEther('1'), // amountAMin
-					parseEther('1'), // amountBMin
+					constants.Zero, // amountAMin
+					constants.Zero, // amountBMin
 					userOne.address, // to
 					timestamp // deadline
 				)
