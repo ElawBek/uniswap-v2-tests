@@ -377,7 +377,7 @@ describe('APP', () => {
 			// To calculate the output tokens:
 			// liquidity * balance / totalSupplyLP
 			// For TokenOne: 12e18 * 1000e18 / 44721359549995793928 = 268.328157299974763570 TKN1
-			// For TokenTwo: 12e18 * 2e18 / 44721359549995793928 = 0.536656314599949527 ETH
+			// For ETH: 12e18 * 2e18 / 44721359549995793928 = 0.536656314599949527 ETH
 			await expect(() =>
 				Router.connect(userOne).removeLiquidityETHWithPermit(
 					TokenOne.address, // token,
@@ -691,6 +691,5 @@ describe('APP', () => {
 
 	// TODO remove liquidity after swap
 	// TODO test remove and swap liquidity with supporting Fee TransferTokens
-	// TODO add liquidity with token less 18 decimals
 	// TODO test with feeTo == true
 })
