@@ -441,4 +441,6 @@ describe('APP', () => {
 			expect(reserveTWF).to.be.eq(parseEther('489.264447921571356199'))
 		})
 	})
+
+	// TODO: Test approveAll bool
 })

@@ -43,6 +43,7 @@ describe('APP', () => {
 
 	let PairERCtoERC: UniswapV2Pair
 	let PairERCtoWETH: UniswapV2Pair
+	let PairERCtoERCfee: UniswapV2Pair
 	let PairETHtoERCfee: UniswapV2Pair
 	let PairERCtoERC6: UniswapV2Pair
 
@@ -137,7 +138,7 @@ describe('APP', () => {
 				timestamp // deadline
 			)
 
-			// Create TokenWithFee - WETH pair
+			// create TokenWithFee - WETH pair
 			await Router.connect(userOne).addLiquidityETH(
 				tokenWithFee.address, // token,
 				parseEther('500'), // amountTokenDesired,
@@ -176,6 +177,13 @@ describe('APP', () => {
 				WETH.address
 			)
 			PairETHtoERCfee = new UniswapV2Pair__factory().attach(createdPairEthAndTokenWithFee)
+
+			// TokenWithFee -- TokenTwo
+			const createdPairTokenAndTokenWithFee = await Factory.getPair(
+				tokenWithFee.address,
+				TokenTwo.address
+			)
+			PairERCtoERCfee = new UniswapV2Pair__factory().attach(createdPairTokenAndTokenWithFee)
 
 			// TokenTwo -- TokenWith6Decimals
 			const createdPairTokenWith6 = await Factory.getPair(
@@ -440,9 +448,123 @@ describe('APP', () => {
 			// 2 + 0.281345747619140203
 			expect(reserveWETH).to.be.eq(parseEther('2.281345747619140203'))
 		})
+
+		it('Swap TKN2 for exact TW6', async () => {
+			// userOne already gave approve TokenTwo --> Router
+
+			// ((reserveIn * amountOut * 1000) / (reserveOut - amountOut) * 997)) + 1
+			// ((20e18 * 34e6 * 1000) / (200e6 - 34e6) * 997)) + 1 =
+			// (6.8e+29 / 1.65502e+11) + 1 =
+			// 4108711677200275526 or 4.108711677200275526 TKN2
+
+			const amounts = await Router.getAmountsIn(BigNumber.from(34 * 10 ** 6), [
+				TokenTwo.address,
+				tokenWith6Decimals.address,
+			])
+
+			expect(amounts[0]).to.be.eq(parseEther('4.108711677200275526'))
+			expect(amounts[1]).to.be.eq(BigNumber.from(34 * 10 ** 6))
+
+			await expect(() =>
+				Router.connect(userOne).swapTokensForExactTokens(
+					BigNumber.from(34 * 10 ** 6), // amountOut,
+					parseEther('5'), // amountInMax,
+					[TokenTwo.address, tokenWith6Decimals.address], // path,
+					userOne.address, // to,
+					timestamp // deadline
+				)
+			).to.changeTokenBalance(
+				TokenTwo,
+				PairERCtoERC6.connect(userOne),
+				parseEther('4.108711677200275526')
+			)
+
+			// Check pair's reserves
+			const reserveTKN2 = await TokenTwo.balanceOf(PairERCtoERC6.address)
+			const reserveTW6 = await tokenWith6Decimals.balanceOf(PairERCtoERC6.address)
+
+			// 20 + 4.108711677200275526
+			expect(reserveTKN2).to.be.eq(parseEther('24.108711677200275526'))
+			// 200 - 34
+			expect(reserveTW6).to.be.eq(BigNumber.from('166000000'))
+		})
+
+		it('Swap exact TKN2 for TWF', async () => {
+			// userOne already gave approve TokenWithFee --> Router
+
+			// amountIn * 997 * reserveOut / reserveIn * 1000 + amountIn * 997
+			// 67e18 * 997 * 498.5e18 / 100e18 * 1000 + 67e18 * 997 =
+			// 3.32993015e+43 / 1.66799e+23 =
+			// 199637296986192962787 or 199.637296986192962787 TWF
+			// Just one translation of tokens from a couple to the user --> -0.3% fee
+			// 199.637296986192962787 * 0.997 = 199.038385095234383898 TWF
+
+			const amounts = await Router.getAmountsOut(parseEther('67'), [
+				TokenTwo.address,
+				tokenWithFee.address,
+			])
+
+			expect(amounts[0]).to.be.eq(parseEther('67'))
+			expect(amounts[1]).to.be.eq(parseEther('199.637296986192962787'))
+
+			await expect(() =>
+				Router.connect(userOne).swapExactTokensForTokensSupportingFeeOnTransferTokens(
+					parseEther('67'), // amountIn,
+					constants.Zero, // amountOutMin,
+					[TokenTwo.address, tokenWithFee.address], // path,
+					userOne.address, // to,
+					timestamp // deadline
+				)
+			).to.changeTokenBalance(tokenWithFee, userOne, parseEther('199.038385095234383898'))
+
+			// Check pair's reserves
+			const reserveTKN2 = await TokenTwo.balanceOf(PairERCtoERCfee.address)
+			const reserveTWF = await tokenWithFee.balanceOf(PairERCtoERCfee.address)
+
+			// 100 + 67
+			expect(reserveTKN2).to.be.eq(parseEther('167'))
+			// 498.5 - 199.637296986192962787
+			expect(reserveTWF).to.be.eq(parseEther('298.862703013807037213'))
+		})
+
+		it('Swap exact ETH for TWF', async () => {
+			// userOne already gave approve TokenWithFee --> Router
+
+			// amountIn * 997 * reserveOut / reserveIn * 1000 + amountIn * 997
+			// 2.3333e18 * 997 * 498.5e18 / 5e18 * 1000 + 2.3333e18 * 997 =
+			// 1.15966059985e+42 / 7.3263001e+21 =
+			// 158287346139424455189 or 158.287346139424455189 TWF
+			// Just one translation of tokens from a couple to the user --> -0.3% fee
+			// 158.287346139424455189 * 0.997 = 157.812484101006181823 TWF
+
+			const amounts = await Router.getAmountsOut(parseEther('2.3333'), [
+				WETH.address,
+				tokenWithFee.address,
+			])
+
+			expect(amounts[0]).to.be.eq(parseEther('2.3333'))
+			expect(amounts[1]).to.be.eq(parseEther('158.287346139424455189'))
+
+			await expect(() =>
+				Router.connect(userOne).swapExactETHForTokensSupportingFeeOnTransferTokens(
+					constants.Zero, // amountOutMin,
+					[WETH.address, tokenWithFee.address], // path,
+					userOne.address, // to,
+					timestamp, // deadline
+					{ value: parseEther('2.3333') }
+				)
+			).to.changeTokenBalance(tokenWithFee, userOne, parseEther('157.812484101006181823'))
+
+			// Check pair's reserves
+			const reserveTWF = await tokenWithFee.balanceOf(PairETHtoERCfee.address)
+			const reserveWETH = await WETH.balanceOf(PairETHtoERCfee.address)
+
+			// 498.5 - 158.287346139424455189
+			expect(reserveTWF).to.be.eq(parseEther('340.212653860575544811'))
+			// 5 + 2.3333
+			expect(reserveWETH).to.be.eq(parseEther('7.3333'))
+		})
 	})
 
-	// TODO swap token to token with 6 decimals
 	// TODO remove liquidity after swap
-	// TODO test swap liquidity with supporting Fee TransferTokens
 })
