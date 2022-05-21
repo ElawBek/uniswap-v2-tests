@@ -170,7 +170,7 @@ describe('APP', () => {
 				// The smallest of the formula is selected: amount * totalSupply / reserve
 				// 60e18 * 110e18 / 220e18 = 30000000000000000000 or 30.000000000000000000 LP
 				// 50e18 * 110e18 / 55e18 = 100000000000000000000 or 100.000000000000000000 LP
-			).to.changeTokenBalance(PairERCtoERC.connect(userOne), userOne, parseEther('30'))
+			).to.changeTokenBalance(TokenOne, userOne, parseEther('-15'))
 		})
 
 		it('Add liquidity with ETH', async () => {
@@ -275,4 +275,6 @@ describe('APP', () => {
 			)
 		})
 	})
+
+	// TODO: feeTo check
 })
