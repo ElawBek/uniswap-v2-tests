@@ -275,6 +275,4 @@ describe('APP', () => {
 			)
 		})
 	})
-
-	// TODO: feeTo check
 })

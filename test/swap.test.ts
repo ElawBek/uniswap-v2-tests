@@ -5,8 +5,6 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { BigNumber, constants } from 'ethers'
 import { parseEther } from 'ethers/lib/utils'
 
-import { signERC2612Permit } from 'eth-permit'
-
 const timestamp = ethers.BigNumber.from(1852640309)
 
 import {
@@ -565,6 +563,4 @@ describe('APP', () => {
 			expect(reserveWETH).to.be.eq(parseEther('7.3333'))
 		})
 	})
-
-	// TODO remove liquidity after swap
 })
