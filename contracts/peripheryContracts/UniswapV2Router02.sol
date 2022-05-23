@@ -2,8 +2,9 @@
 
 pragma solidity =0.6.6;
 
+import './helpers/libraries/TransferHelper.sol';
+
 import '../coreContracts/interfaces/IUniswapV2Factory.sol';
-import './helpers/TransferHelper.sol';
 
 import './interfaces/IUniswapV2Router02.sol';
 import './libraries/UniswapV2Library.sol';

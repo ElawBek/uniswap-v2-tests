@@ -25,7 +25,6 @@ import {
 describe('APP', () => {
 	let owner: SignerWithAddress
 	let userOne: SignerWithAddress
-	let userTwo: SignerWithAddress
 
 	let WETH: WETH9
 
@@ -41,7 +40,7 @@ describe('APP', () => {
 	let flashSwap: FlashSwap
 
 	beforeEach(async () => {
-		;[owner, userOne, userTwo] = await ethers.getSigners()
+		;[owner, userOne] = await ethers.getSigners()
 
 		// Deploy WETH contract
 		WETH = await new WETH9__factory(owner).deploy()
