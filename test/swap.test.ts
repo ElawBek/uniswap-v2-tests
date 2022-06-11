@@ -1,3 +1,4 @@
+import { signERC2612Permit } from "eth-permit";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 

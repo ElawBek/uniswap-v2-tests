@@ -24,27 +24,27 @@ library UniswapV2Library {
     require(token0 != address(0), "UniswapV2Library: ZERO_ADDRESS");
   }
 
-  // I remade a little here, since Create2 from Uniswap returned the wrong address of the pair that was created
-  // As a result, we turn directly to the factory, but since this is for tests, it is worthless
+  // Change init code hash to keccak256(UniswapV2Pait.creationCode)
   function pairFor(
     address factory,
     address tokenA,
     address tokenB
-  ) internal view returns (address pair) {
+  ) internal pure returns (address pair) {
     (address token0, address token1) = sortTokens(tokenA, tokenB);
-    pair = IUniswapV2Factory(factory).getPair(token0, token1);
-    // pair = address(
-    // 	uint256(
-    // 		keccak256(
-    // 			abi.encodePacked(
-    // 				hex'ff',
-    // 				factory,
-    // 				keccak256(abi.encodePacked(token0, token1)),
-    // 				hex'96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f' // init code hash
-    // 			)
-    // 		)
-    // 	)
-    // );
+    pair = address(
+      uint160(
+        uint256(
+          keccak256(
+            abi.encodePacked(
+              hex"ff",
+              factory,
+              keccak256(abi.encodePacked(token0, token1)),
+              hex"5ab0781a2374c72a159e02f84223757ccd1cff731cd8bfec90f3a47fb6dfd79c" // init code hash
+            )
+          )
+        )
+      )
+    );
   }
 
   // fetches and sorts the reserves for a pair
